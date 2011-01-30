@@ -21,43 +21,6 @@ import Control.Monad
 
 import Skype.Entry
 
-
-data RawRecord = Record {
-    recType :: RecordType,
-    recValue :: S.ByteString }
-
-instance Show RawRecord where
-    show (Record rType rVal) = show rType
-
-data RecordType = 
-    VoicemailFile | 
-    Call | 
-    Summary | 
-    Language | 
-    Country | 
-    City | 
-    File | 
-    Peek | 
-    Email | 
-    URL | 
-    Description | 
-    Phone | 
-    Type | 
-    User | 
-    Session | 
-    Members | 
-    Name | 
-    Sender | 
-    Recipient | 
-    Message | 
-    Member |
-    Number | 
-    Screenname | 
-    Fullname | 
-    LogBy |
-    Special |
-    Unknown deriving (Show)
-
 class LogParser s where
     parseSkypeLog :: s -> [SkypeEntry]
 
@@ -73,20 +36,20 @@ parsecLogParser = do
     session <- read4Bytes
     AP.take 4
     content <- AP.take $ fromIntegral recSz
-    return . extractResult $ parse (parseLogContent session) content
+    return . extractResult $ parse (parseLogContent recSz session) content
     where
         extractResult ( Fail _ _ msg ) = IncompleteEntry msg
         extractResult ( Partial f ) = extractResult $ f S.empty
         extractResult ( Done _ r ) = r
 
-parseLogContent :: Word32 -> Parser SkypeEntry
-parseLogContent skypeSession = do
-    let skypeEntry = makeSEntry { sessionId = skypeSession }
+parseLogContent :: Word32 -> Word32 -> Parser SkypeEntry
+parseLogContent recSz skypeSession = do
+    let skypeEntry = makeSEntry { sessionId = skypeSession, recSize=recSz }
     records <- try $ many parseRecord
     return $ DL.foldl mkSkypeEntry skypeEntry records
     where
-        mkSkypeEntry rec ( Record Message rValue ) = rec { message = rValue }
-        mkSkypeEntry rec _ = rec
+        mkSkypeEntry rec fld = let fields = fld:rawRecs rec
+                               in rec { rawRecs = fields }
 
 parseRecord :: Parser RawRecord
 parseRecord = do
@@ -132,7 +95,7 @@ deriveType 920 = Screenname
 deriveType 924 = Fullname
 deriveType 3160 = LogBy
 deriveType num | num > 1000000000 = Special
-deriveType _ = Unknown
+deriveType num = Unknown num
 
 skipGarbage = AP.skipWhile ( /= 0x03 )
 
