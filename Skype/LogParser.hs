@@ -24,7 +24,7 @@ import Skype.Entry
 class LogParser s where
     parseSkypeLog :: s -> [SkypeEntry]
 
-extractResults = ((either (const []) id . AP.eitherResult) .) . AP.parse
+extractResults = ((either (const []) id . AP.eitherResult) .) . (flip AP.feed S.empty .) . AP.parse
 
 instance LogParser S.ByteString where
     parseSkypeLog = extractResults (many parsecLogParser)
@@ -36,6 +36,7 @@ parsecLogParser = do
     session <- read4Bytes
     AP.take 4
     content <- AP.take $ fromIntegral recSz
+    AP.skipWhile ( == 0x00 )
     return . extractResult $ parse (parseLogContent recSz session) content
     where
         extractResult ( Fail _ _ msg ) = IncompleteEntry msg
