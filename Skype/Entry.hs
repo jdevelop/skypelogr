@@ -16,15 +16,21 @@ data SkypeEntry = SEntry {
     recipientName :: ByteString,
     members :: [ByteString],
     message :: ByteString,
-    rawRecs :: [RawRecord]
+    records :: [RawRecord]
 } | IncompleteEntry { parseErrorMsg :: String } deriving Show
 
-data RawRecord = Record {
-    recType :: RecordType,
-    recValue :: ByteString }
+data RawRecord = IRecord {
+                    recType :: RecordType,
+                    intVal :: Word64 } |
+                 TRecord { recType :: RecordType,
+                    txtVal :: ByteString } |
+                 BRecord
+
 
 instance Show RawRecord where
-    show (Record rType rVal) = show rType
+    show (IRecord rType _) = show rType
+    show (TRecord rType _) = show rType
+    show BRecord = "BRecord"
 
 data RecordType = 
     VoicemailFile | 
@@ -58,7 +64,6 @@ data RecordType =
 defaultTime = fromGregorian' 1970 1 1
 
 makeSEntry = SEntry 0 0 0 defaultTime empty empty empty empty [] empty []
-
 
 data SkypeChat = SChat {
     messages :: [SkypeEntry]

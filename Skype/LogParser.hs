@@ -34,7 +34,7 @@ parsecLogParser = do
     string $ S.pack [0x6C,0x33,0x33,0x6C]
     recSz <- read4Bytes
     session <- read4Bytes
-    AP.take 4
+    AP.take 5
     content <- AP.take $ fromIntegral recSz
     AP.skipWhile ( == 0x00 )
     return . extractResult $ parse (parseLogContent recSz session) content
@@ -49,16 +49,37 @@ parseLogContent recSz skypeSession = do
     records <- try $ many parseRecord
     return $ DL.foldl mkSkypeEntry skypeEntry records
     where
-        mkSkypeEntry rec fld = let fields = fld:rawRecs rec
-                               in rec { rawRecs = fields }
+        mkSkypeEntry rec fld = let recs = records rec 
+                               in rec { records = fld:recs }
 
-parseRecord :: Parser RawRecord
-parseRecord = do
-    try skipGarbage
-    try skipDelimiter
-    recType <- liftM deriveType readNumber
-    value <- AP.takeWhile ( /= 0x03 )
-    return $ Record recType value
+
+intMark = S.pack [0x00]
+textMark = S.pack [0x03]
+blobMark = S.pack [0x04]
+
+parseRecord ::  Parser RawRecord
+parseRecord = AP.take 1 >>= handleRecord 
+    where
+        handleRecord src | src == intMark = parseInt
+                         | src == textMark = parseText
+                         | src == blobMark =  parseBlob
+
+parseInt = do
+    itemCode <- liftM deriveType readNumber
+    itemValue <- readNumber
+    return $ IRecord itemCode itemValue
+
+parseText = do
+    itemCode <- liftM deriveType readNumber
+    content <- AP.takeWhile ( /= 0x00 )
+    return $ TRecord itemCode content
+
+parseBlob = do
+    itemCode <- liftM deriveType readNumber
+    itemSize <- readNumber
+    AP.take $ fromIntegral itemSize
+    return BRecord
+
 
 deriveType :: Word64 -> RecordType
 deriveType 15 = VoicemailFile
