@@ -34,7 +34,7 @@ parsecLogParser = do
     string $ S.pack [0x6C,0x33,0x33,0x6C]
     recSz <- read4Bytes
     session <- read4Bytes
-    AP.take 4
+    AP.take 5
     content <- AP.take $ fromIntegral recSz
     AP.skipWhile ( == 0x00 )
     return . extractResult $ parse (parseLogContent recSz session) content
@@ -61,33 +61,33 @@ parseRecord = do
     return $ Record recType value
 
 deriveType :: Word64 -> RecordType
-deriveType 15 = VoicemailFile
-deriveType 16 = Call
-deriveType 20 = Summary
-deriveType 36 = Language
-deriveType 40 = Country
-deriveType 48 = City
-deriveType 51 = File
-deriveType 55 = Peek
-deriveType 64 = Email
-deriveType 68 = URL
-deriveType 72 = Description
-deriveType 116 = Country
-deriveType 184 = Phone
-deriveType 296 = Type
-deriveType 404 = User
-deriveType 408 = User
+--deriveType 15 = VoicemailFile
+--deriveType 16 = Call
+--deriveType 20 = Summary
+--deriveType 36 = Language
+--deriveType 40 = Country
+--deriveType 48 = City
+--deriveType 51 = File
+deriveType 55 = Message
+--deriveType 64 = Email
+--deriveType 68 = URL
+--deriveType 72 = Description
+--deriveType 116 = Country
+--deriveType 184 = Phone
+--deriveType 296 = Type
+--deriveType 404 = User
+--deriveType 408 = User
 deriveType 440 = Session
 deriveType 456 = Members
 deriveType 460 = Members
 deriveType 468 = User
 deriveType 472 = Name
-deriveType 480 = Session
+--deriveType 480 = Session
 deriveType 488 = Sender
 deriveType 492 = Sender
 deriveType 500 = Recipient
 deriveType 508 = Message
-deriveType 584 = Session
+--deriveType 584 = Session
 deriveType 588 = Member
 deriveType 828 = User
 deriveType 840 = User
@@ -106,9 +106,9 @@ read4Bytes = liftM ( runGet getWord32le . (L.fromChunks . (:[])) ) $ AP.take 4
 
 readNumber ::  Parser Word64
 readNumber = do
-    buf <- AP.takeWhile ( \c -> c .&. 0x80 > 0 )
+    buf <- AP.takeWhile ( \c -> c .&. 0x80 == 0x80 )
     rem <- liftM S.head $ AP.take 1
-    return $ DL.foldl makeNum 0 $ DL.zip (S.unpack $ buf `S.snoc` rem) [7,14..]
+    return $ DL.foldl makeNum 0 $ DL.zip (S.unpack $ buf `S.snoc` rem) [0,7..]
     where 
         makeNum :: Word64 -> (Word8, Int) -> Word64
         makeNum acc (dig, bits) = acc .|. ( ( (fromIntegral dig) .&. 0x7f) `shift` bits )
