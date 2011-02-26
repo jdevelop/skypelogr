@@ -8,12 +8,9 @@ import Data.ByteString
 data SkypeEntry = SEntry {
     recSize :: Word32,
     sessionId :: Word32,
-    msgId :: Int,
+    msgId :: Word32,
     timeStamp :: DateTime,
     senderId :: ByteString,
-    senderName :: ByteString,
-    recipientId :: ByteString,
-    recipientName :: ByteString,
     members :: [ByteString],
     message :: ByteString,
     records :: [RawRecord]
@@ -24,13 +21,18 @@ data RawRecord = IRecord {
                     intVal :: Word64 } |
                  TRecord { recType :: RecordType,
                     txtVal :: ByteString } |
-                 BRecord
+                 BRecord { recType :: RecordType,
+                     blobVal :: ByteString, 
+                     bRecSize :: Int} |
+                 URecord { recType :: RecordType,
+                     content :: ByteString }
 
 
 instance Show RawRecord where
-    show (IRecord rType _) = show rType
-    show (TRecord rType _) = show rType
-    show BRecord = "BRecord"
+    show (IRecord rType val) = "I : " ++ show rType ++  " : " ++ show val
+    show (TRecord rType val) = "T : " ++ show rType ++ " : " ++ show val
+    show (BRecord rType _ _) = "B : " ++ show rType
+    show (URecord rType _) = "U : " ++ show rType
 
 data RecordType = 
     VoicemailFile | 
@@ -58,12 +60,14 @@ data RecordType =
     Screenname | 
     Fullname | 
     LogBy |
-    Special |
+    MsgId |
+    Date |
     Unknown { code :: Word64 } deriving (Show)
 
 defaultTime = fromGregorian' 1970 1 1
 
-makeSEntry = SEntry 0 0 0 defaultTime empty empty empty empty [] empty []
+makeSEntry ::  SkypeEntry
+makeSEntry = SEntry 0 0 0 defaultTime empty [] empty []
 
 data SkypeChat = SChat {
     messages :: [SkypeEntry]

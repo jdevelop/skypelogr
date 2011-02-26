@@ -17,9 +17,13 @@ import Data.Map as DM
 
 import Data.Word
 
+import Data.DateTime
+
 import Control.Monad
 
 import Skype.Entry
+
+import Text.Printf
 
 class LogParser s where
     parseSkypeLog :: s -> [SkypeEntry]
@@ -49,8 +53,14 @@ parseLogContent recSz skypeSession = do
     records <- try $ many parseRecord
     return $ DL.foldl mkSkypeEntry skypeEntry records
     where
+        mkSkypeEntry rec (TRecord Message val) = rec { message = val }
+        mkSkypeEntry rec (TRecord Sender val) = rec { senderId = val }
+        mkSkypeEntry rec (TRecord Members val) = rec { members = splitRec val }
+        mkSkypeEntry rec (IRecord Date val) = rec { timeStamp = fromSeconds . fromIntegral $ val }
+        mkSkypeEntry rec (IRecord MsgId val) = rec { msgId = fromIntegral val }
         mkSkypeEntry rec fld = let recs = records rec 
                                in rec { records = fld:recs }
+        splitRec = S.split 0x20
 
 
 intMark = S.pack [0x00]
@@ -63,33 +73,44 @@ parseRecord = AP.take 1 >>= handleRecord
         handleRecord src | src == intMark = parseInt
                          | src == textMark = parseText
                          | src == blobMark =  parseBlob
+                         | otherwise = parseUnknown
 
+parseInt ::  Parser RawRecord
 parseInt = do
     itemCode <- liftM deriveType readNumber
     itemValue <- readNumber
     return $ IRecord itemCode itemValue
 
+parseText ::  Parser RawRecord
 parseText = do
     itemCode <- liftM deriveType readNumber
     content <- AP.takeWhile ( /= 0x00 )
+    AP.take 1
     return $ TRecord itemCode content
 
+parseBlob ::  Parser RawRecord
 parseBlob = do
     itemCode <- liftM deriveType readNumber
     itemSize <- readNumber
-    AP.take $ fromIntegral itemSize
-    return BRecord
+    content <- AP.take $ fromIntegral itemSize
+    return $ BRecord itemCode content ( fromIntegral itemSize )
+
+parseUnknown = do
+    itemCode <- liftM deriveType readNumber
+    content <- AP.takeWhile ( \ch -> ch > 0x04 )
+    return $ URecord itemCode content
 
 
 deriveType :: Word64 -> RecordType
 deriveType 15 = VoicemailFile
 deriveType 16 = Call
 deriveType 20 = Summary
+deriveType 0x17 = MsgId
 deriveType 36 = Language
 deriveType 40 = Country
 deriveType 48 = City
 deriveType 51 = File
-deriveType 55 = Peek
+deriveType 55 = Message
 deriveType 64 = Email
 deriveType 68 = URL
 deriveType 72 = Description
@@ -107,16 +128,15 @@ deriveType 480 = Session
 deriveType 488 = Sender
 deriveType 492 = Sender
 deriveType 500 = Recipient
-deriveType 508 = Message
 deriveType 584 = Session
 deriveType 588 = Member
-deriveType 828 = User
+deriveType 565 = Date
+deriveType 828 = Sender
 deriveType 840 = User
 deriveType 868 = Number
 deriveType 920 = Screenname
 deriveType 924 = Fullname
 deriveType 3160 = LogBy
-deriveType num | num > 1000000000 = Special
 deriveType num = Unknown num
 
 skipGarbage = AP.skipWhile ( /= 0x03 )
@@ -129,7 +149,20 @@ readNumber ::  Parser Word64
 readNumber = do
     buf <- AP.takeWhile ( \c -> c .&. 0x80 > 0 )
     rem <- liftM S.head $ AP.take 1
-    return $ DL.foldl makeNum 0 $ DL.zip (S.unpack $ buf `S.snoc` rem) [7,14..]
+    return $ DL.foldl makeNum 0 $ DL.zip (S.unpack $ buf `S.snoc` rem) [0,7..]
     where 
         makeNum :: Word64 -> (Word8, Int) -> Word64
         makeNum acc (dig, bits) = acc .|. ( ( (fromIntegral dig) .&. 0x7f) `shift` bits )
+
+parseNum :: [Word8] -> Result Word64
+parseNum = parse readNumber . S.pack 
+
+showNum :: Word64 -> [Word8]
+showNum item | next == 0 = [cur]
+             | otherwise = (cur .|. 0x80) : showNum next
+    where
+         cur = ((fromIntegral item) .&. 0x7f)
+         next = item `shiftR` 7
+
+printNum :: Word64 -> String
+printNum = DL.concat . DL.intersperse "," . DL.map (printf "%0x") . showNum
