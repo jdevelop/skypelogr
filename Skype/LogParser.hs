@@ -33,19 +33,31 @@ extractResults = ((either (const []) id . AP.eitherResult) .) . (flip AP.feed S.
 instance LogParser S.ByteString where
     parseSkypeLog = extractResults (many parsecLogParser)
 
+headerSign' = [0x6C,0x33,0x33,0x6C]
+
 parsecLogParser ::  Parser SkypeEntry
 parsecLogParser = do
-    string $ S.pack [0x6C,0x33,0x33,0x6C]
+    skipUntilString headerSign'
     recSz <- read4Bytes
     session <- read4Bytes
     AP.take 5
-    content <- AP.take $ fromIntegral recSz
-    AP.skipWhile ( == 0x00 )
+    content <- AP.take $ fromIntegral recSz - 9
     return . extractResult $ parse (parseLogContent recSz session) content
     where
         extractResult ( Fail _ _ msg ) = IncompleteEntry msg
         extractResult ( Partial f ) = extractResult $ f S.empty
         extractResult ( Done _ r ) = r
+
+skipUntilString :: [Word8] -> Parser ()
+skipUntilString start = go start
+    where
+        go [] = return ()
+        go (x:xs) = do
+            cur <- AP.take 1
+            handleChar x xs (S.head cur)
+        handleChar x xs cur | x == cur = go xs
+                            | cur == DL.head start = go $ DL.tail start
+                            | otherwise = go start
 
 parseLogContent :: Word32 -> Word32 -> Parser SkypeEntry
 parseLogContent recSz skypeSession = do
