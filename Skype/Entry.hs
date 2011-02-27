@@ -7,7 +7,7 @@ import Data.ByteString
 
 data SkypeEntry = SEntry {
     recSize :: Word32,
-    sessionId :: Word32,
+    sessionId :: ByteString,
     msgId :: Word32,
     timeStamp :: DateTime,
     senderId :: ByteString,
@@ -67,8 +67,9 @@ data RecordType =
 defaultTime = fromGregorian' 1970 1 1
 
 makeSEntry ::  SkypeEntry
-makeSEntry = SEntry 0 0 0 defaultTime empty [] empty []
+makeSEntry = SEntry 0 empty 0 defaultTime empty [] empty []
 
 data SkypeChat = SChat {
+    userL, userR :: ByteString,
     messages :: [SkypeEntry]
 }

@@ -1,4 +1,6 @@
-module Skype.LogParser where
+module Skype.LogParser (
+    LogParser(parseSkypeLog)
+) where
 
 import Data.ByteString.Lazy as L
 import Data.ByteString as S
@@ -28,6 +30,7 @@ import Text.Printf
 class LogParser s where
     parseSkypeLog :: s -> [SkypeEntry]
 
+extractResults ::  Parser [a] -> S.ByteString -> [a]
 extractResults = ((either (const []) id . AP.eitherResult) .) . (flip AP.feed S.empty .) . AP.parse
 
 instance LogParser S.ByteString where
@@ -39,10 +42,9 @@ parsecLogParser ::  Parser SkypeEntry
 parsecLogParser = do
     skipUntilString headerSign'
     recSz <- read4Bytes
-    session <- read4Bytes
-    AP.take 5
+    AP.take 9
     content <- AP.take $ fromIntegral recSz - 9
-    return . extractResult $ parse (parseLogContent recSz session) content
+    return . extractResult $ parse (parseLogContent recSz) content
     where
         extractResult ( Fail _ _ msg ) = IncompleteEntry msg
         extractResult ( Partial f ) = extractResult $ f S.empty
@@ -59,9 +61,9 @@ skipUntilString start = go start
                             | cur == DL.head start = go $ DL.tail start
                             | otherwise = go start
 
-parseLogContent :: Word32 -> Word32 -> Parser SkypeEntry
-parseLogContent recSz skypeSession = do
-    let skypeEntry = makeSEntry { sessionId = skypeSession, recSize=recSz }
+parseLogContent :: Word32 -> Parser SkypeEntry
+parseLogContent recSz = do
+    let skypeEntry = makeSEntry { recSize=recSz }
     records <- try $ many parseRecord
     return $ DL.foldl mkSkypeEntry skypeEntry records
     where
@@ -70,6 +72,7 @@ parseLogContent recSz skypeSession = do
         mkSkypeEntry rec (TRecord Members val) = rec { members = splitRec val }
         mkSkypeEntry rec (IRecord Date val) = rec { timeStamp = fromSeconds . fromIntegral $ val }
         mkSkypeEntry rec (IRecord MsgId val) = rec { msgId = fromIntegral val }
+        mkSkypeEntry rec (TRecord Session val) = rec { sessionId = val }
         mkSkypeEntry rec fld = let recs = records rec 
                                in rec { records = fld:recs }
         splitRec = S.split 0x20
