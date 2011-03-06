@@ -110,7 +110,7 @@ parseBlob = do
 
 parseUnknown = do
     itemCode <- liftM deriveType readNumber
-    content <- AP.takeWhile ( \ch -> ch > 0x04 )
+    content <- AP.takeWhile ( > 0x04 )
     return $ URecord itemCode content
 
 
@@ -157,4 +157,4 @@ skipGarbage = AP.skipWhile ( /= 0x03 )
 
 skipDelimiter = AP.skipWhile ( == 0x03 )
 
-read4Bytes = liftM ( runGet getWord32le . (L.fromChunks . (:[])) ) $ AP.take 4
+read4Bytes = liftM ( runGet getWord32le . L.fromChunks . (:[]) ) $ AP.take 4

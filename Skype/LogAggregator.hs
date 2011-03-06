@@ -19,7 +19,7 @@ aggregateLogs :: [[SkypeEntry]] -> [SkypeChat]
 aggregateLogs = extractChats . DL.foldr allocateEntry chatsMap . DL.concat
     where
         allocateEntry :: SkypeEntry -> ChatsMap -> ChatsMap
-        allocateEntry entry acc = DM.alter ( updMap entry ) ( sessionId entry ) acc
+        allocateEntry entry = DM.alter ( updMap entry ) ( sessionId entry )
         updMap entry Nothing = Just [entry]
         updMap entry (Just entries) = Just $ entry : entries
         extractChats :: ChatsMap -> [SkypeChat]

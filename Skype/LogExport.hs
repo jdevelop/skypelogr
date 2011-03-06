@@ -49,7 +49,7 @@ exportChats folder username = mapM_ ( go . exportChat username )
         go chat = do
             mkdirs $ splitDirectories folder'
             bracket (openFile file' WriteMode)
-                    (hClose)
+                    hClose
                     doExport
             where
                 mkdirs [dir] = mkDir dir
@@ -64,7 +64,7 @@ exportChats folder username = mapM_ ( go . exportChat username )
                 firstEntry = DL.head . getEntries $ chat
                 firstEntryDateStr = formatDateTime "%Y-%m-%d  %H-%M-%S" . timeStamp $ firstEntry
                 folderName = getFolderName chat
-                doExport handle = do
+                doExport handle =
                     mapM_ (writeEntry handle) $ getEntries chat
                 writeEntry handle chatEntry = do
                     let username = senderId chatEntry

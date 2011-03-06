@@ -16,11 +16,11 @@ readNumber = do
     return $ DL.foldl makeNum 0 $ DL.zip (S.unpack $ buf `S.snoc` rem) [0,7..]
     where 
         makeNum :: Word64 -> (Word8, Int) -> Word64
-        makeNum acc (dig, bits) = acc .|. ( ( (fromIntegral dig) .&. 0x7f) `shift` bits )
+        makeNum acc (dig, bits) = acc .|. ( ( fromIntegral dig .&. 0x7f) `shift` bits )
 
 convertToBytes :: String -> [Word8]
 convertToBytes [] = []
-convertToBytes (x:y:xs) = read ( ['0','x',x,y] ) : convertToBytes xs
+convertToBytes (x:y:xs) = read ['0','x',x,y] : convertToBytes xs
 
 parseNumStr :: String -> Result Word64
 parseNumStr = parseNum . convertToBytes
@@ -32,8 +32,8 @@ showNum :: Word64 -> [Word8]
 showNum item | next == 0 = [cur]
              | otherwise = (cur .|. 0x80) : showNum next
     where
-         cur = ((fromIntegral item) .&. 0x7f)
+         cur = fromIntegral item .&. 0x7f
          next = item `shiftR` 7
 
 printNum :: Word64 -> String
-printNum = DL.concat . DL.intersperse "," . DL.map (printf "%0x") . showNum
+printNum = DL.intercalate "," . DL.map (printf "%0x") . showNum
