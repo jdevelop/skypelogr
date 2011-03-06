@@ -1,4 +1,4 @@
-module Skype.Main where
+module Main where
 
 import Skype.Entry
 import Skype.LogAggregator
