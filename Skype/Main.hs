@@ -1,4 +1,4 @@
-module Main where
+module Skype.Main where
 
 import Skype.Entry
 import Skype.LogAggregator
@@ -13,7 +13,7 @@ import System.FilePath
 import Data.ByteString as S
 
 listChatFiles :: FilePath -> IO [FilePath]
-listChatFiles path = DL.filter chatPredicate `fmap` getDirectoryContents path
+listChatFiles path = (DL.map ( path </> ) . DL.filter chatPredicate ) `fmap` getDirectoryContents path
     where
         chatPredicate x = x =~ "chat(msg)?\\d+.dbb"
 
@@ -22,7 +22,9 @@ main = do
     where
         go (skypeFolder:targetFolder:[]) = do
             let username = takeFileName skypeFolder
-            listChatFiles skypeFolder >>= 
-                mapM S.readFile >>= 
-                exportChats username targetFolder . aggregateLogs . DL.map parseSkypeLog
+            files <- listChatFiles skypeFolder
+            Prelude.putStrLn $ "History files found: " ++ (show $ DL.length files)
+            chats <- (aggregateLogs . DL.map parseSkypeLog) `fmap` mapM S.readFile files
+            Prelude.putStrLn $ "Sessions found: " ++ (show $ DL.length chats)
+            exportChats targetFolder username chats
         go _ = Prelude.putStrLn "Usage: skypeexport <skype folder> <output folder>"

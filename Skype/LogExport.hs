@@ -1,4 +1,6 @@
-module Skype.LogExport where
+module Skype.LogExport (
+    exportChats
+) where
 
 import Skype.Entry
 import Data.Set as DS
@@ -45,6 +47,7 @@ exportChats :: String -> String -> [SkypeChat] -> IO ()
 exportChats folder username = mapM_ ( go . exportChat username )
     where 
         go chat = do
+            Prelude.putStrLn $ "Creating " ++ folder'
             mkdirs $ splitDirectories folder'
             bracket (openFile file' WriteMode)
                     (hClose)
