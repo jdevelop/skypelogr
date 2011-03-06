@@ -22,11 +22,14 @@ main = do
     where
         go (skypeFolder:targetFolder:[]) = do
             let username = DL.last . splitDirectories $ skypeFolder
+            Prelude.putStrLn $ "Processing folder " ++ skypeFolder
             files <- listChatFiles skypeFolder
             Prelude.putStrLn $ "History files found: " ++ (show $ DL.length files)
             chats <- (aggregateLogs . DL.map parseSkypeLog) `fmap` mapM S.readFile files
+            let totals = DL.sum $ DL.map ( DL.length . messages ) chats
             Prelude.putStrLn $ "Sessions found: " ++ (show $ DL.length chats)
-            Prelude.putStrLn $ "Exporting chats for " ++ username ++ " from folder " ++ targetFolder
+            Prelude.putStrLn $ "Messages found: " ++ (show totals)
+            Prelude.putStrLn $ "Exporting chats for " ++ username ++ " to folder " ++ targetFolder
             exportChats targetFolder username chats
-            Prelude.putStrLn $ "Done, look at " ++ targetFolder
+            Prelude.putStrLn $ "Done, results available under" ++ targetFolder
         go _ = Prelude.putStrLn "Usage: skypeexport <skype folder> <output folder>"
