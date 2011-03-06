@@ -1,4 +1,4 @@
-module LogAggregator (
+module Skype.LogAggregator (
         aggregateLogs
 ) where
 
