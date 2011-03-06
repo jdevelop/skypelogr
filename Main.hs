@@ -21,10 +21,12 @@ main = do
     getArgs >>= go
     where
         go (skypeFolder:targetFolder:[]) = do
-            let username = takeFileName skypeFolder
+            let username = DL.last . splitDirectories $ skypeFolder
             files <- listChatFiles skypeFolder
             Prelude.putStrLn $ "History files found: " ++ (show $ DL.length files)
             chats <- (aggregateLogs . DL.map parseSkypeLog) `fmap` mapM S.readFile files
             Prelude.putStrLn $ "Sessions found: " ++ (show $ DL.length chats)
+            Prelude.putStrLn $ "Exporting chats for " ++ username ++ " from folder " ++ targetFolder
             exportChats targetFolder username chats
+            Prelude.putStrLn $ "Done, look at " ++ targetFolder
         go _ = Prelude.putStrLn "Usage: skypeexport <skype folder> <output folder>"

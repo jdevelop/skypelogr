@@ -47,7 +47,6 @@ exportChats :: String -> String -> [SkypeChat] -> IO ()
 exportChats folder username = mapM_ ( go . exportChat username )
     where 
         go chat = do
-            Prelude.putStrLn $ "Creating " ++ folder'
             mkdirs $ splitDirectories folder'
             bracket (openFile file' WriteMode)
                     (hClose)
