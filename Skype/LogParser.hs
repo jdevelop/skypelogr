@@ -24,8 +24,7 @@ import Data.DateTime
 import Control.Monad
 
 import Skype.Entry
-
-import Text.Printf
+import Skype.Util
 
 class LogParser s where
     parseSkypeLog :: s -> [SkypeEntry]
@@ -71,7 +70,6 @@ parseLogContent recSz = do
         mkSkypeEntry rec (TRecord Sender val) = rec { senderId = val }
         mkSkypeEntry rec (TRecord Members val) = rec { members = splitRec val }
         mkSkypeEntry rec (IRecord Date val) = rec { timeStamp = fromSeconds . fromIntegral $ val }
-        mkSkypeEntry rec (IRecord MsgId val) = rec { msgId = fromIntegral val }
         mkSkypeEntry rec (TRecord Session val) = rec { sessionId = val }
         mkSkypeEntry rec fld = let recs = records rec 
                                in rec { records = fld:recs }
@@ -120,12 +118,12 @@ deriveType :: Word64 -> RecordType
 deriveType 15 = VoicemailFile
 deriveType 16 = Call
 deriveType 20 = Summary
-deriveType 0x17 = MsgId
 deriveType 36 = Language
 deriveType 40 = Country
 deriveType 48 = City
 deriveType 51 = File
 deriveType 55 = Message
+deriveType 508 = Message
 deriveType 64 = Email
 deriveType 68 = URL
 deriveType 72 = Description
@@ -146,6 +144,7 @@ deriveType 500 = Recipient
 deriveType 584 = Session
 deriveType 588 = Member
 deriveType 565 = Date
+deriveType 485 = Date
 deriveType 828 = Sender
 deriveType 840 = User
 deriveType 868 = Number
@@ -159,25 +158,3 @@ skipGarbage = AP.skipWhile ( /= 0x03 )
 skipDelimiter = AP.skipWhile ( == 0x03 )
 
 read4Bytes = liftM ( runGet getWord32le . (L.fromChunks . (:[])) ) $ AP.take 4
-
-readNumber ::  Parser Word64
-readNumber = do
-    buf <- AP.takeWhile ( \c -> c .&. 0x80 > 0 )
-    rem <- liftM S.head $ AP.take 1
-    return $ DL.foldl makeNum 0 $ DL.zip (S.unpack $ buf `S.snoc` rem) [0,7..]
-    where 
-        makeNum :: Word64 -> (Word8, Int) -> Word64
-        makeNum acc (dig, bits) = acc .|. ( ( (fromIntegral dig) .&. 0x7f) `shift` bits )
-
-parseNum :: [Word8] -> Result Word64
-parseNum = parse readNumber . S.pack 
-
-showNum :: Word64 -> [Word8]
-showNum item | next == 0 = [cur]
-             | otherwise = (cur .|. 0x80) : showNum next
-    where
-         cur = ((fromIntegral item) .&. 0x7f)
-         next = item `shiftR` 7
-
-printNum :: Word64 -> String
-printNum = DL.concat . DL.intersperse "," . DL.map (printf "%0x") . showNum

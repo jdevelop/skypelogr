@@ -1,20 +1,30 @@
 module Skype.Entry where
 
 import Data.DateTime
-import Data.List
+import Data.List as DL
 import Data.Word
 import Data.ByteString
+import Data.ByteString.UTF8 as U
 
 data SkypeEntry = SEntry {
     recSize :: Word32,
     sessionId :: ByteString,
-    msgId :: Word32,
     timeStamp :: DateTime,
     senderId :: ByteString,
     members :: [ByteString],
     message :: ByteString,
     records :: [RawRecord]
 } | IncompleteEntry { parseErrorMsg :: String } deriving Show
+
+instance Eq (SkypeEntry) where
+    a == b = sessionId a == sessionId b && 
+             timeStamp a == timeStamp b &&
+             senderId a == senderId b
+
+instance Ord (SkypeEntry) where
+    a `compare` b | timeStamp a < timeStamp b = LT
+                  | timeStamp a > timeStamp b = GT
+                  | otherwise                 = EQ
 
 data RawRecord = IRecord {
                     recType :: RecordType,
@@ -67,9 +77,12 @@ data RecordType =
 defaultTime = fromGregorian' 1970 1 1
 
 makeSEntry ::  SkypeEntry
-makeSEntry = SEntry 0 empty 0 defaultTime empty [] empty []
+makeSEntry = SEntry 0 empty defaultTime empty [] empty []
 
 data SkypeChat = SChat {
     userL, userR :: ByteString,
     messages :: [SkypeEntry]
 }
+
+instance Show SkypeChat where
+    show s = U.toString (userL s) ++ " : " ++ U.toString ( userR s ) ++ " (" ++ show ( DL.length (messages s) ) ++ ")"

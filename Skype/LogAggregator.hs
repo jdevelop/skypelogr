@@ -34,5 +34,6 @@ parseChatSession = do
     word8 0x23
     userA <- DA.takeWhile ( /= 0x2f )
     word8 0x2f
+    word8 0x24
     userB <- DA.takeWhile ( /= 0x3b )
     return (userA, userB)
