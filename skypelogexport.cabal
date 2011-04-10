@@ -54,7 +54,7 @@ Executable skypelogexport
   Build-depends: base >= 4, bytestring >= 0.9,
                  filepath >= 1.2, regex-pcre >= 0.94,
                  haskell98 >= 1, directory >= 1,
-                 datetime >= 0.2, IfElse >= 0.8,
+                 datetime >= 0.2.1, IfElse >= 0.8,
                  containers >= 0.4, utf8-string >= 0.3,
                  attoparsec >= 0.8, ghc-binary >= 0.5
   
