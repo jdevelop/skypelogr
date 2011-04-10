@@ -7,13 +7,14 @@ import Data.Set as DS
 import Data.List as DL 
 import Data.ByteString.Char8 as DB8
 import Data.ByteString as S
+import Data.Time
 import Control.Monad
 import Control.Monad.IfElse
 import Control.Exception
-import Data.DateTime
 import System.Directory
 import System.FilePath
 import System.IO
+import System.Locale
 
 newtype SortedSkypeEntry = SortedSkypeEntry { entries :: [SkypeEntry] }
 
@@ -62,14 +63,14 @@ exportChats folder username = mapM_ ( go . exportChat username )
                 folder' = folder </> username </> DB8.unpack folderName
                 file' = folder' </> firstEntryDateStr <.> "log"
                 firstEntry = DL.head . getEntries $ chat
-                firstEntryDateStr = formatDateTime "%Y-%m-%d  %H-%M-%S" . timeStamp $ firstEntry
+                firstEntryDateStr = formatTime defaultTimeLocale "%Y-%m-%d  %H-%M-%S" . timeStamp $ firstEntry
                 folderName = getFolderName chat
                 doExport handle =
                     mapM_ (writeEntry handle) $ getEntries chat
                 writeEntry handle chatEntry = do
                     let username = senderId chatEntry
                     let content = message chatEntry
-                    let timestamp = formatDateTime " %d-%m-%Y %H:%M:%S" . timeStamp $ chatEntry
+                    let timestamp = formatTime defaultTimeLocale " %d-%m-%Y %H:%M:%S" . timeStamp $ chatEntry
                     -- ugly formatting goes here
                     S.hPutStr handle username
                     S.hPutStr handle separator 

@@ -7,7 +7,8 @@ import Data.Bits
 import Data.ByteString as S
 import Data.List as DL
 import Text.Printf
-
+import Data.Time
+import Data.Time.Calendar as C
 
 readNumber ::  Parser Word64
 readNumber = do
@@ -37,3 +38,31 @@ showNum item | next == 0 = [cur]
 
 printNum :: Word64 -> String
 printNum = DL.intercalate "," . DL.map (printf "%0x") . showNum
+
+fromGregorian' :: Integral a => Integer -> Int -> Int -> a -> a -> a -> UTCTime
+fromGregorian' year month day hours minutes seconds =
+    UTCTime day' (secondsToDiffTime . fromIntegral $ seconds')
+        where
+            day'     = C.fromGregorian year month day
+            seconds' = 3600 * hours + 60 * minutes + seconds
+
+startGT ::  UTCTime
+startGT = fromGregorian' 1970 1 1 0 0 0
+
+startOfTimeMJD ::  Rational
+startOfTimeMJD = toMJD startGT
+
+fromUniversalTime ::  UniversalTime -> UTCTime
+fromUniversalTime = localTimeToUTC utc . ut1ToLocalTime 0
+
+fromMJD ::  Rational -> UTCTime
+fromMJD = fromUniversalTime . ModJulianDate
+
+toMJD ::  UTCTime -> Rational
+toMJD = getModJulianDate . toUniversalTime
+
+toUniversalTime ::  UTCTime -> UniversalTime
+toUniversalTime = localTimeToUT1 0 . utcToLocalTime utc
+
+fromSeconds ::  Integral a => a -> UTCTime
+fromSeconds s =  fromMJD $ fromIntegral s / 86400 + startOfTimeMJD

@@ -1,15 +1,16 @@
 module Skype.Entry where
 
-import Data.DateTime
 import Data.List as DL
 import Data.Word
 import Data.ByteString
 import Data.ByteString.UTF8 as U
+import Data.Time
+import Skype.Util
 
 data SkypeEntry = SEntry {
     recSize :: Word32,
     sessionId :: ByteString,
-    timeStamp :: DateTime,
+    timeStamp :: UTCTime,
     senderId :: ByteString,
     members :: [ByteString],
     message :: ByteString,
@@ -74,7 +75,7 @@ data RecordType =
     Date |
     Unknown { code :: Word64 } deriving (Show)
 
-defaultTime = fromGregorian' 1970 1 1
+defaultTime = fromGregorian' 1970 1 1 0 0 0
 
 makeSEntry ::  SkypeEntry
 makeSEntry = SEntry 0 empty defaultTime empty [] empty []

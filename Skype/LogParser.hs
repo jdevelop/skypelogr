@@ -19,8 +19,6 @@ import Data.Map as DM
 
 import Data.Word
 
-import Data.DateTime
-
 import Control.Monad
 
 import Skype.Entry
@@ -69,7 +67,7 @@ parseLogContent recSz = do
         mkSkypeEntry rec (TRecord Message val) = rec { message = val }
         mkSkypeEntry rec (TRecord Sender val) = rec { senderId = val }
         mkSkypeEntry rec (TRecord Members val) = rec { members = splitRec val }
-        mkSkypeEntry rec (IRecord Date val) = rec { timeStamp = fromSeconds . fromIntegral $ val }
+        mkSkypeEntry rec (IRecord Date val) = rec { timeStamp = fromSeconds val }
         mkSkypeEntry rec (TRecord Session val) = rec { sessionId = val }
         mkSkypeEntry rec fld = let recs = records rec 
                                in rec { records = fld:recs }
