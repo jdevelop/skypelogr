@@ -8,7 +8,6 @@ import Data.ByteString as S
 import Data.List as DL
 import Text.Printf
 import Data.Time
-import Data.Time.Calendar as C
 import Data.Time.Clock.POSIX
 
 readNumber ::  Parser Word64
@@ -40,5 +39,5 @@ showNum item | next == 0 = [cur]
 printNum :: Word64 -> String
 printNum = DL.intercalate "," . DL.map (printf "%0x") . showNum
 
-fromSeconds :: Word32 -> UTCTime
+fromSeconds :: Word64 -> UTCTime
 fromSeconds = posixSecondsToUTCTime . realToFrac

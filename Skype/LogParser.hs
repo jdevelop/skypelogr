@@ -27,11 +27,11 @@ import Skype.Util
 class LogParser s where
     parseSkypeLog :: s -> [SkypeEntry]
 
-extractResults ::  Parser [a] -> S.ByteString -> [a]
+extractResults ::  AP.Parser [a] -> S.ByteString -> [a]
 extractResults = ((either (const []) id . AP.eitherResult) .) . (flip AP.feed S.empty .) . AP.parse
 
 instance LogParser S.ByteString where
-    parseSkypeLog = extractResults (many parsecLogParser)
+    parseSkypeLog = extractResults (many1 parsecLogParser)
 
 headerSign' = [0x6C,0x33,0x33,0x6C]
 
@@ -61,7 +61,7 @@ skipUntilString start = go start
 parseLogContent :: Word32 -> Parser SkypeEntry
 parseLogContent recSz = do
     let skypeEntry = makeSEntry { recSize=recSz }
-    records <- try $ many parseRecord
+    records <- try $ many1 parseRecord
     return $ DL.foldl mkSkypeEntry skypeEntry records
     where
         mkSkypeEntry rec (TRecord Message val) = rec { message = val }

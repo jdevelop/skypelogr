@@ -5,6 +5,7 @@ import Data.Word
 import Data.ByteString
 import Data.ByteString.UTF8 as U
 import Data.Time
+import Data.Time.Calendar (fromGregorian)
 import Skype.Util
 
 data SkypeEntry = SEntry {
@@ -75,7 +76,7 @@ data RecordType =
     Date |
     Unknown { code :: Word64 } deriving (Show)
 
-defaultTime = fromGregorian' 1970 1 1 0 0 0
+defaultTime = UTCTime (fromGregorian 1970 1 1) 0
 
 makeSEntry ::  SkypeEntry
 makeSEntry = SEntry 0 empty defaultTime empty [] empty []
