@@ -32,18 +32,22 @@ getEntries = entries . snd . snd . export
 
 getUsernameSize = fst . snd . export
 
-sortEntries :: [SkypeEntry] -> SortedSkypeEntry
-sortEntries = SortedSkypeEntry . DS.toList . DS.fromList
+sortEntries :: [SkypeEntry] -> (Int,SortedSkypeEntry)
+sortEntries = second (SortedSkypeEntry . DS.toList) . DL.foldl go (0,DS.empty)
+  where
+    go (current,uniq) entry = (
+                                max (DB8.length $ senderId entry) current, 
+                                DS.insert entry uniq
+                              )
 
 exportChat :: String -> SkypeChat -> ExportChat
 exportChat srcUser chat = ExportChat (folderName, (maxLen, sortedEntries))
     where
-        sortedEntries = sortEntries . messages $ chat
+        (maxLen,sortedEntries) = sortEntries . messages $ chat
         firstEntry = DL.head . entries $ sortedEntries
         srcUser' = DB8.pack srcUser
         uL = userL chat
         uR = userR chat
-        maxLen = uncurry max $ join (***) DB8.length (uL,uR)
         folderName | srcUser' == uL = uR
                  | srcUser' == uR = uL
                  | otherwise = srcUser'
