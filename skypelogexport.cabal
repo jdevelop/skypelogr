@@ -55,9 +55,9 @@ Executable skypelogexport
                  filepath >= 1.2, regex-pcre >= 0.94,
                  haskell98 >= 1, directory >= 1,
                  old-locale >= 1, IfElse >= 0.8,
-                 time > 1.2,
-                 containers >= 0.4, utf8-string >= 0.3,
-                 attoparsec >= 0.8, ghc-binary >= 0.5
+                 time > 1.2, containers >= 0.4, 
+                 utf8-string >= 0.3, attoparsec >= 0.8, 
+                 ghc-binary >= 0.5, sqlite >= 0.5
   
   -- Modules not exported by this package.
   -- Other-modules:       

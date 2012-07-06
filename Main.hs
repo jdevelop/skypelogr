@@ -1,8 +1,9 @@
 module Main where
 
 import Skype.Entry
-import Skype.LogAggregator
 import Skype.LogParser
+import Skype.DBBLogParser
+import Skype.LogAggregator
 import Skype.LogExport
 import Control.Monad
 import Data.List as DL
@@ -24,11 +25,11 @@ main = getArgs >>= go
             Prelude.putStrLn $ "Processing folder " ++ skypeFolder
             files <- listChatFiles skypeFolder
             Prelude.putStrLn $ "History files found: " ++ show (DL.length files)
-            chats <- (aggregateLogs . DL.map parseSkypeLog) `fmap` mapM S.readFile files
+            chats <- (DL.take 3 . aggregateLogs . DL.map parseSkypeLog) `fmap` mapM S.readFile files
             let totals = DL.sum $ DL.map ( DL.length . messages ) chats
             Prelude.putStrLn $ "Sessions found: " ++ show (DL.length chats)
             Prelude.putStrLn $ "Messages found: " ++ show totals
             Prelude.putStrLn $ "Exporting chats for " ++ username ++ " to folder " ++ targetFolder
             exportChats targetFolder username chats
-            Prelude.putStrLn $ "Done, results available under" ++ targetFolder
+            Prelude.putStrLn $ "Done, results available under " ++ targetFolder
         go _ = Prelude.putStrLn "Usage: skypeexport <skype folder> <output folder>"
