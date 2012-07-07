@@ -69,25 +69,28 @@ findUsers root =
         path = parent </> entry
     chatPredicate x = x =~ "chat(msg)?\\d+.dbb"
     dbPredicate x = x =~ "main.db"
-    goWithFile path | chatPredicate path = (:[]) <$> S.readFile path
+    goWithFile :: FilePath -> IO [SkypeEntry]
+    goWithFile path | chatPredicate path = parseSkypeLog <$> S.readFile path
+                    | dbPredicate path = return (parseSkypeLog (SQLFile path))
                     | otherwise = return []
 
 main = getArgs >>= parseCmdLine >>= prepareEnv >>= go
   where
     go (Settings targetFolder (Just skypeFolder)) = do
-      mappings <- findUsers skypeFolder
-      if DL.null mappings 
+      entries <- findUsers skypeFolder
+      if DL.null entries
         then Prelude.putStrLn "No Skype records found"
-        else mapM_ (uncurry (execute targetFolder)) mappings
+        else mapM_ (uncurry (execute targetFolder)) entries
     prepareEnv x@(Settings targetFolder Nothing) = do
       folder <- getSkypeFolder
       return x { skypeFolder = folder }
     prepareEnv x = return x
-    execute targetFolder folder files = do
+    execute :: FilePath -> FilePath -> [SkypeEntry] -> IO ()
+    execute targetFolder folder entries = do
       let username = DL.last . splitDirectories $ folder
       Prelude.putStrLn $ "Processing folder " ++ folder
-      Prelude.putStrLn $ "History files found: " ++ show (DL.length files)
-      let chats = aggregateLogs $ DL.map parseSkypeLog files
+      Prelude.putStrLn $ "History files found: " ++ show (DL.length entries)
+      let chats = aggregateLogs [entries]
       let totals = DL.sum $ DL.map ( DL.length . messages ) chats
       Prelude.putStrLn $ "Sessions found: " ++ show (DL.length chats)
       Prelude.putStrLn $ "Messages found: " ++ show totals
