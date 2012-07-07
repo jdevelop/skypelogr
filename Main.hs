@@ -1,8 +1,10 @@
+{-# LANGUAGE TypeSynonymInstances #-}
 module Main where
 
 import Skype.Entry
 import Skype.LogParser
 import Skype.DBBLogParser
+import Skype.SQLiteLogParser
 import Skype.LogAggregator
 import Skype.LogExport
 import Skype.FolderResolver
@@ -47,11 +49,6 @@ parseCmdLine argv =
   where 
     header = "Usage: ic [OPTION...] files..."
 
-listChatFiles :: FilePath -> IO [FilePath]
-listChatFiles path = (DL.map ( path </> ) . DL.filter chatPredicate ) `fmap` getDirectoryContents path
-    where
-        chatPredicate x = x =~ "chat(msg)?\\d+.dbb"
-
 findUsers root = 
   DL.filter (not . DL.null . snd) <$> (getDirectoryContents root >>= mapM diveInto . DL.filter removeSpecial)
   where
@@ -61,8 +58,8 @@ findUsers root =
     removeSpecial src = not $ src `DL.elem` [".",".."]
     processEntry parent entry = do
       fileExists <- doesFileExist path
-      if (fileExists && (chatPredicate entry || dbPredicate entry))
-        then return [path]
+      if (fileExists) 
+        then goWithFile path
         else do
           dirExists <- doesDirectoryExist path
           if dirExists 
@@ -72,7 +69,8 @@ findUsers root =
         path = parent </> entry
     chatPredicate x = x =~ "chat(msg)?\\d+.dbb"
     dbPredicate x = x =~ "main.db"
-
+    goWithFile path | chatPredicate path = (:[]) <$> S.readFile path
+                    | otherwise = return []
 
 main = getArgs >>= parseCmdLine >>= prepareEnv >>= go
   where
@@ -89,7 +87,7 @@ main = getArgs >>= parseCmdLine >>= prepareEnv >>= go
       let username = DL.last . splitDirectories $ folder
       Prelude.putStrLn $ "Processing folder " ++ folder
       Prelude.putStrLn $ "History files found: " ++ show (DL.length files)
-      chats <- (aggregateLogs . DL.map parseSkypeLog) `fmap` mapM S.readFile files
+      let chats = aggregateLogs $ DL.map parseSkypeLog files
       let totals = DL.sum $ DL.map ( DL.length . messages ) chats
       Prelude.putStrLn $ "Sessions found: " ++ show (DL.length chats)
       Prelude.putStrLn $ "Messages found: " ++ show totals
