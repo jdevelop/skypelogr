@@ -23,7 +23,8 @@ aggregateLogs = extractChats . DL.foldr allocateEntry chatsMap . DL.concat
         updMap entry Nothing = Just [entry]
         updMap entry (Just entries) = Just $ entry : entries
         extractChats :: ChatsMap -> [SkypeChat]
-        extractChats = DM.foldWithKey go []
+        -- this may cause errors!!!
+        extractChats = DM.foldrWithKey go []
         go key value arr = let ( userA, userB ) = extractResult $ DA.parse parseChatSession key
                            in SChat userA userB value : arr
         extractResult (Done _ r) = r
