@@ -63,7 +63,7 @@ exportChats folder username = mapM_ ( go . exportChat username )
             mkdirs $ splitDirectories folder'
             bracket (openFile file' WriteMode)
                     hClose
-                    doExport
+                    (\handle -> hSetBinaryMode handle True >> doExport handle)
             where
                 mkdirs [dir] = mkDir dir
                 mkdirs (dir:new:dirs) = do

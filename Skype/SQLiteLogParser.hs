@@ -9,7 +9,7 @@ import System.IO.Unsafe (unsafePerformIO)
 import qualified Database.SQLite as SQL
 import Control.Applicative ((<$>))
 
-import qualified Data.ByteString.UTF8 as U8
+import qualified Data.ByteString.Char8 as U8
 
 newtype SQLFile = SQLFile { getFileName :: String }
 
@@ -20,7 +20,7 @@ instance LogParser SQLFile where
     SQL.openReadonlyConnection (getFileName file) >>= 
     buildSkypeMessages 
 
-emptyU8 = U8.fromString ""
+emptyU8 = U8.pack ""
 
 buildSkypeMessages :: SQL.SQLiteHandle -> IO [SkypeEntry]
 buildSkypeMessages dbh = 
@@ -32,14 +32,14 @@ buildSkypeMessages dbh =
         f' (("chatname",SQL.Text chatname):
             ("author",SQL.Text author):
             ("timestamp",SQL.Int timestamp):
-            r) = (SEntry 0 (U8.fromString chatname) 
+            r) = (SEntry 0 (U8.pack chatname) 
                            (fromSeconds (fromIntegral timestamp)) 
-                           (U8.fromString author)      
+                           (U8.pack author)      
                            [],
                            r)
         f xs = let (partEntry, (item:_)) = f' xs
                in case item of
-                 ("body_xml",SQL.Text v) -> partEntry (U8.fromString v) []
+                 ("body_xml",SQL.Text v) -> partEntry (U8.pack v) []
                  ("body_xml",SQL.Null)   -> partEntry emptyU8 []
         escape (_,SQL.Text v) = v
         escape (_,SQL.Null) = ""
