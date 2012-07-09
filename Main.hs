@@ -67,8 +67,8 @@ findUsers root =
             else return []
       where
         path = parent </> entry
-    chatPredicate x = x =~ "chat(msg)?\\d+.dbb"
-    dbPredicate x = x =~ "main.db"
+    chatPredicate x = x =~ "chat(msg)?\\d+.dbb$"
+    dbPredicate x = x =~ "main.db$"
     goWithFile :: FilePath -> IO [SkypeEntry]
     goWithFile path | chatPredicate path = parseSkypeLog <$> S.readFile path
                     | dbPredicate path = return (parseSkypeLog (SQLFile path))
