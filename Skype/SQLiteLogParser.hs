@@ -6,41 +6,38 @@ import Skype.Util
 
 import System.IO.Unsafe (unsafePerformIO)
 
-import qualified Database.SQLite as SQL
+import Database.HDBC
+import Database.HDBC.Sqlite3
 import Control.Applicative ((<$>))
 
 import qualified Data.ByteString.Char8 as U8
 
 newtype SQLFile = SQLFile { getFileName :: String }
 
-type Rows = [[SQL.Row SQL.Value]]
+type Rows = [[SqlValue]]
 
 instance LogParser SQLFile where
   parseSkypeLog file = unsafePerformIO $ 
-    SQL.openReadonlyConnection (getFileName file) >>= 
+    connectSqlite3 (getFileName file) >>= 
     buildSkypeMessages 
 
 emptyU8 = U8.pack ""
 
-buildSkypeMessages :: SQL.SQLiteHandle -> IO [SkypeEntry]
+buildSkypeMessages :: Connection -> IO [SkypeEntry]
 buildSkypeMessages dbh = 
-  go <$> (SQL.execStatement dbh "select chatname,author,timestamp,body_xml from messages order by chatname, timestamp")
+  map f <$> (quickQuery dbh "select chatname,author,timestamp,body_xml from messages order by chatname, timestamp" [])
   where
-    go (Left msg) = fail msg
-    go (Right rows) = map f $ concat rows
-      where
-        f' (("chatname",SQL.Text chatname):
-            ("author",SQL.Text author):
-            ("timestamp",SQL.Int timestamp):
-            r) = (SEntry 0 (U8.pack chatname) 
-                           (fromSeconds (fromIntegral timestamp)) 
-                           (U8.pack author)      
-                           [],
-                           r)
-        f xs = let (partEntry, (item:_)) = f' xs
-               in case item of
-                 ("body_xml",SQL.Text v) -> partEntry (U8.pack v) []
-                 ("body_xml",SQL.Null)   -> partEntry emptyU8 []
-        escape (_,SQL.Text v) = v
-        escape (_,SQL.Null) = ""
-        escape (_,SQL.Int v) = show v
+    f' ((SqlByteString chatname):
+        (SqlByteString author):
+        timestamp:
+        r) = (SEntry 0 chatname
+                       (fromSeconds (fromIntegral (fromSql (timestamp) :: Integer))) 
+                       author
+                       [],
+                       r)
+    f' xs = error $ concatMap show xs
+    f xs = let (partEntry, (item:_)) = f' xs
+           in case item of
+             SqlByteString v -> partEntry v []
+             SqlNull     -> partEntry emptyU8 []
+             s           -> error $ show s

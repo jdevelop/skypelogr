@@ -57,7 +57,8 @@ Executable skypelogexport
                  old-locale >= 1, IfElse >= 0.8,
                  time > 1.2, containers >= 0.4, 
                  utf8-string >= 0.3, attoparsec >= 0.8, 
-                 ghc-binary >= 0.5, sqlite >= 0.5
+                 ghc-binary >= 0.5, HDBC-sqlite3 >= 2.3,
+                 HDBC
   
   -- Modules not exported by this package.
   -- Other-modules:       
