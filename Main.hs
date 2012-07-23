@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE TypeSynonymInstances, TemplateHaskell, DoAndIfThenElse #-}
 module Main where
 
 import Skype.Entry
@@ -20,10 +20,27 @@ import System.Console.GetOpt
 import Text.Regex.PCRE
 import Text.Printf
 import Data.ByteString as S
+import Data.ByteString.Lazy as LS
+import qualified Data.Binary as DB
 
-data Settings = Settings { exportFolder :: FilePath, skypeFolder :: Maybe FilePath } deriving Show
+import Data.FileEmbed
+import Language.Haskell.TH.Syntax
+import Language.Haskell.TH.Lib
+import Crypto.Types.PubKey.RSA
+import Codec.Crypto.RSA
 
-defaultSettings = Settings "" Nothing
+import Licenser.License
+import Licenser.Validate
+
+licenses = DB.decode . LS.fromChunks . (:[]) $ $(embedFile "skypelogr.priv") :: [PrivateKey]
+
+data Settings = Settings { 
+  exportFolder :: FilePath, 
+  skypeFolder :: Maybe FilePath, 
+  registrationData :: Maybe TLicenseFile
+  } 
+
+defaultSettings = Settings "" Nothing Nothing
 
 options :: [OptDescr (Settings -> IO Settings)]
 options = 
@@ -49,6 +66,7 @@ parseCmdLine argv =
   where 
     header = "Usage: ic [OPTION...] files..."
 
+findUsers ::  FilePath -> IO [(FilePath, [SkypeEntry])]
 findUsers root = 
   DL.filter (not . DL.null . snd) <$> (getDirectoryContents root >>= mapM diveInto . DL.filter removeSpecial)
   where
@@ -74,26 +92,43 @@ findUsers root =
                     | dbPredicate path = return (parseSkypeLog (SQLFile path))
                     | otherwise = return []
 
-main = getArgs >>= parseCmdLine >>= prepareEnv >>= go
+main = getArgs >>= parseCmdLine >>= prepareEnv >>= fillLicense >>= go
   where
-    go (Settings targetFolder (Just skypeFolder)) = do
+    go (Settings _ Nothing _ ) = Prelude.putStrLn "No Skype folders found"
+    go (Settings targetFolder (Just skypeFolder) lcsz) = do
       entries <- findUsers skypeFolder
       if DL.null entries
         then Prelude.putStrLn "No Skype records found"
-        else mapM_ (uncurry (execute targetFolder)) entries
-    prepareEnv x@(Settings targetFolder Nothing) = do
+        else mapM_ (uncurry (
+                      execute targetFolder (
+                        maybe False (flip validateLicence licenses) lcsz
+                      )
+                    )
+                  ) entries
+    fillLicense s = do
+      licenseFile <- liftM (</> "license") getCurrentDirectory
+      haveLicenseFile <- doesFileExist licenseFile
+      if (haveLicenseFile) 
+      then 
+        do
+          license <- LS.readFile licenseFile
+          return $ s { registrationData = Just ( DB.decode license ) }
+      else
+        return s { registrationData = Nothing }
+    prepareEnv x@(Settings targetFolder Nothing _) = do
       folder <- getSkypeFolder
       return x { skypeFolder = folder }
     prepareEnv x = return x
-    execute :: FilePath -> FilePath -> [SkypeEntry] -> IO ()
-    execute targetFolder folder entries = do
+    execute targetFolder full folder entries = do
       let username = DL.last . splitDirectories $ folder
       Prelude.putStrLn $ "Processing folder " ++ folder
       Prelude.putStrLn $ "History files found: " ++ show (DL.length entries)
-      let chats = aggregateLogs [entries]
+      let chats = aggregateLogs [if full then entries else takeSafe 20 entries]
       let totals = DL.sum $ DL.map ( DL.length . messages ) chats
       Prelude.putStrLn $ "Sessions found: " ++ show (DL.length chats)
       Prelude.putStrLn $ "Messages found: " ++ show totals
       Prelude.putStrLn $ "Exporting chats for " ++ username ++ " to folder " ++ targetFolder
       exportChats targetFolder username chats
       Prelude.putStrLn $ "Done, results available under " ++ targetFolder
+    takeSafe _ [] = []
+    takeSafe n xs = DL.take n xs
