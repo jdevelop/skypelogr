@@ -61,7 +61,8 @@ Executable skypelogexport
                  HDBC, licenser >= 0.1, template-haskell,
                  file-embed >= 0.0.4, RSA >= 1, 
                  crypto-pubkey-types >= 0.1.1
-  
+ 
+  ghc-options:  -O -Wall
   -- Modules not exported by this package.
   -- Other-modules:       
   

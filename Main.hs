@@ -122,13 +122,13 @@ main = getArgs >>= parseCmdLine >>= prepareEnv >>= fillLicense >>= go
     execute targetFolder full folder entries = do
       let username = DL.last . splitDirectories $ folder
       Prelude.putStrLn $ "Processing folder " ++ folder
-      Prelude.putStrLn $ "History files found: " ++ show (DL.length entries)
+      Prelude.putStrLn $ "Total messages found: " ++ show (DL.length entries)
       let chats = aggregateLogs [if full then entries else takeSafe 20 entries]
       let totals = DL.sum $ DL.map ( DL.length . messages ) chats
-      Prelude.putStrLn $ "Sessions found: " ++ show (DL.length chats)
-      Prelude.putStrLn $ "Messages found: " ++ show totals
-      Prelude.putStrLn $ "Exporting chats for " ++ username ++ " to folder " ++ targetFolder
+      Prelude.putStrLn $ "Exported sessions " ++ show (DL.length chats)
+      Prelude.putStrLn $ "Exported messages: " ++ show totals
+      Prelude.putStrLn $ "Exporting chats for " ++ username
       exportChats targetFolder username chats
-      Prelude.putStrLn $ "Done, results available under " ++ targetFolder
+      Prelude.putStrLn $ "Done" 
     takeSafe _ [] = []
     takeSafe n xs = DL.take n xs
