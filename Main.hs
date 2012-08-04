@@ -3,8 +3,8 @@ module Main where
 
 import Skype.Entry
 import Skype.LogParser
-import Skype.DBBLogParser
 import Skype.SQLiteLogParser
+import Skype.DBBLogParser()
 import Skype.LogAggregator
 import Skype.LogExport
 import Skype.FolderResolver
@@ -12,9 +12,8 @@ import Skype.FolderResolver
 import Control.Monad (liftM,foldM)
 import Control.Applicative ((<$>))
 import Data.List as DL
-import Data.Maybe
 import System.Directory
-import System
+import System.Environment
 import System.FilePath
 import System.Console.GetOpt
 import Text.Regex.PCRE
@@ -24,15 +23,13 @@ import Data.ByteString.Lazy as LS
 import qualified Data.Binary as DB
 
 import Data.FileEmbed
-import Language.Haskell.TH.Syntax
-import Language.Haskell.TH.Lib
 import Crypto.Types.PubKey.RSA
-import Codec.Crypto.RSA
 
 import Licenser.License
 import Licenser.Validate
 
-licenses = DB.decode . LS.fromChunks . (:[]) $ $(embedFile "skypelogr.priv") :: [PrivateKey]
+licenses :: [PrivateKey]
+licenses = DB.decode . LS.fromChunks . (:[]) $ $(embedFile "skypelogr.priv")
 
 data Settings = Settings { 
   exportFolder :: FilePath, 
@@ -40,6 +37,7 @@ data Settings = Settings {
   registrationData :: Maybe TLicenseFile
   } 
 
+defaultSettings :: Settings
 defaultSettings = Settings "" Nothing Nothing
 
 options :: [OptDescr (Settings -> IO Settings)]
@@ -59,9 +57,10 @@ options =
         then return $ opts {exportFolder = dir}
         else ioError $ userError (printf "Export folder %s does not exist" dir)
 
+parseCmdLine :: [String] -> IO Settings
 parseCmdLine argv = 
   case getOpt Permute options argv of
-    (o,n,[]  ) -> foldM ( flip id ) defaultSettings o
+    (o,_,[]  ) -> foldM ( flip id ) defaultSettings o
     (_,_,errs) -> ioError (userError (DL.concat errs ++ usageInfo header options))
   where 
     header = "Usage: ic [OPTION...] files..."
@@ -92,11 +91,12 @@ findUsers root =
                     | dbPredicate path = return (parseSkypeLog (SQLFile path))
                     | otherwise = return []
 
+main :: IO ()
 main = getArgs >>= parseCmdLine >>= prepareEnv >>= fillLicense >>= go
   where
     go (Settings _ Nothing _ ) = Prelude.putStrLn "No Skype folders found"
-    go (Settings targetFolder (Just skypeFolder) lcsz) = do
-      entries <- findUsers skypeFolder
+    go (Settings targetFolder (Just skypeFolderPath) lcsz) = do
+      entries <- findUsers skypeFolderPath
       if DL.null entries
         then Prelude.putStrLn "No Skype records found"
         else mapM_ (uncurry (
@@ -115,7 +115,7 @@ main = getArgs >>= parseCmdLine >>= prepareEnv >>= fillLicense >>= go
           return $ s { registrationData = Just ( DB.decode license ) }
       else
         return s { registrationData = Nothing }
-    prepareEnv x@(Settings targetFolder Nothing _) = do
+    prepareEnv x@(Settings _ Nothing _) = do
       folder <- getSkypeFolder
       return x { skypeFolder = folder }
     prepareEnv x = return x
