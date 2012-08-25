@@ -25,19 +25,19 @@ emptyU8 = U8.pack ""
 
 buildSkypeMessages :: Connection -> IO [SkypeEntry]
 buildSkypeMessages dbh = 
-  map f <$> (quickQuery dbh "select chatname,author,timestamp,body_xml from messages order by chatname, timestamp" [])
+  concatMap f <$> (quickQuery dbh "select chatname, author, timestamp, body_xml from messages order by chatname, timestamp" [])
   where
+    f' (SqlNull:rest) = []
     f' ((SqlByteString chatname):
         (SqlByteString author):
         timestamp:
-        r) = (SEntry 0 chatname
+        r) = [(SEntry 0 chatname
                        (fromSeconds (fromIntegral (fromSql (timestamp) :: Integer))) 
                        author
                        [],
-                       r)
+                       r)]
     f' xs = error $ concatMap show xs
-    f xs = let (partEntry, (item:_)) = f' xs
-           in case item of
-             SqlByteString v -> partEntry v []
-             SqlNull     -> partEntry emptyU8 []
-             s           -> error $ show s
+    f xs = z <$> f' xs
+    z (partEntry, ((SqlByteString v):_))  = partEntry v []
+    z (partEntry, (SqlNull:_))            = partEntry emptyU8 []
+    z (partEntry, s)                      = error $ show s
