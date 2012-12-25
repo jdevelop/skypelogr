@@ -12,6 +12,8 @@ import Control.Applicative ((<$>))
 
 import qualified Data.ByteString.Char8 as U8
 
+import Debug.Trace
+
 newtype SQLFile = SQLFile { getFileName :: String }
 
 type Rows = [[SqlValue]]
@@ -36,7 +38,7 @@ buildSkypeMessages dbh =
                        author
                        [],
                        r)]
-    f' xs = error $ concatMap show xs
+    f' xs = traceShow (concatMap show xs) []
     f xs = z <$> f' xs
     z (partEntry, ((SqlByteString v):_))  = partEntry v []
     z (partEntry, (SqlNull:_))            = partEntry emptyU8 []
