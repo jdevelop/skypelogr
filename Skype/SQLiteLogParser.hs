@@ -42,4 +42,4 @@ buildSkypeMessages dbh =
     f xs = z <$> f' xs
     z (partEntry, ((SqlByteString v):_))  = partEntry v []
     z (partEntry, (SqlNull:_))            = partEntry emptyU8 []
-    z (partEntry, s)                      = error $ show s
+    z (partEntry, s)                      = traceShow s $ partEntry emptyU8 []
